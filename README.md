@@ -22,6 +22,17 @@ Get up! is an action coach that turns an overwhelming goal into one small, immed
 - Python
 - Streamlit
 
+## How Codex and GPT-5.6 were used
+
+Codex was the primary development environment for Get up! during OpenAI Build Week. Working with GPT-5.6 in Codex, we turned the initial product idea into a focused interaction contract, implemented the Streamlit session flow, refined the structured JSON response format, hardened model output before rendering it as HTML, added automated interaction tests, and deployed the finished app.
+
+GPT-5.6 was especially useful for the product decisions that make the experience intentionally small: returning exactly one observable action, reducing a step when the user is stuck, and avoiding judgmental or overwhelming language. Codex also helped us design the dual-mode architecture:
+
+- With `OPENAI_API_KEY`, `generate_action` uses the OpenAI Responses API and asks GPT-5.6 for a structured, personalized next step.
+- Without credentials, the public deployment uses an explicitly labeled deterministic demo mode so every judge can test the complete interaction without a paid account.
+
+The primary Codex `/feedback` Session ID is supplied in the Devpost submission, and the Git commit history shows the implementation and deployment work completed during the submission period.
+
 ## Run locally
 
 1. Create and activate a Python virtual environment.
@@ -68,7 +79,7 @@ Without a key, the app runs in free demo mode. The default API model is `gpt-5.6
 
 ## OpenAI Build Week
 
-Get up! was created for OpenAI Build Week as an experiment in using AI to reduce the friction between intention and action.
+Get up! was created for OpenAI Build Week as an experiment in using Codex and GPT-5.6 to reduce the friction between intention and action.
 
 ## Concept gallery
 
