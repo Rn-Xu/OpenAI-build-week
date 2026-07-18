@@ -31,6 +31,107 @@ Rules:
 - If the request suggests immediate danger or self-harm, encourage the user to contact local emergency services or a trusted person now instead of giving productivity advice.
 """
 
+DEMO_PLANS: tuple[tuple[tuple[str, ...], tuple[dict[str, str], ...]], ...] = (
+    (
+        ("study", "exam", "learn", "read", "homework", "学习", "考试", "复习", "作业"),
+        (
+            {
+                "action": "Put the material you need in front of you and open it.",
+                "estimate": "30 seconds",
+                "encouragement": "Opening the door to the task is enough for now.",
+            },
+            {
+                "action": "Read only the first heading or question.",
+                "estimate": "1 minute",
+                "encouragement": "One small piece is easier than the whole subject.",
+            },
+            {
+                "action": "Write one sentence about what you just read.",
+                "estimate": "2 minutes",
+                "encouragement": "A rough sentence still counts as progress.",
+            },
+        ),
+    ),
+    (
+        ("write", "report", "essay", "proposal", "presentation", "写", "报告", "论文", "方案", "演示"),
+        (
+            {
+                "action": "Open a blank document and type a working title.",
+                "estimate": "30 seconds",
+                "encouragement": "The title can be imperfect; it only needs to exist.",
+            },
+            {
+                "action": "Add three rough bullet points you might include.",
+                "estimate": "2 minutes",
+                "encouragement": "Fragments are a useful beginning.",
+            },
+            {
+                "action": "Turn the easiest bullet point into one sentence.",
+                "estimate": "2 minutes",
+                "encouragement": "You are building momentum one sentence at a time.",
+            },
+        ),
+    ),
+    (
+        ("clean", "tidy", "organize", "room", "desk", "清理", "整理", "房间", "桌面"),
+        (
+            {
+                "action": "Pick up one item that is out of place.",
+                "estimate": "15 seconds",
+                "encouragement": "One item is a real start.",
+            },
+            {
+                "action": "Put away three more visible items.",
+                "estimate": "1 minute",
+                "encouragement": "A small clear area can change the whole feeling.",
+            },
+            {
+                "action": "Clear one hand-sized section of the surface.",
+                "estimate": "2 minutes",
+                "encouragement": "You only need to improve one small space.",
+            },
+        ),
+    ),
+    (
+        ("exercise", "workout", "run", "walk", "运动", "锻炼", "跑步", "散步"),
+        (
+            {
+                "action": "Stand up and put on your shoes.",
+                "estimate": "1 minute",
+                "encouragement": "Getting ready is already part of the action.",
+            },
+            {
+                "action": "Move gently for one minute where you are.",
+                "estimate": "1 minute",
+                "encouragement": "A tiny amount of movement still matters.",
+            },
+            {
+                "action": "Walk to the door or the end of the room and back.",
+                "estimate": "2 minutes",
+                "encouragement": "You can decide what comes next after this small step.",
+            },
+        ),
+    ),
+)
+
+DEFAULT_DEMO_PLAN: tuple[dict[str, str], ...] = (
+    {
+        "action": "Open the place, file, or tool you would use for this goal.",
+        "estimate": "30 seconds",
+        "encouragement": "You do not have to finish—just make the task visible.",
+    },
+    {
+        "action": "Write down the smallest visible result you could make next.",
+        "estimate": "1 minute",
+        "encouragement": "A clear next move is progress.",
+    },
+    {
+        "action": "Work on that result for two focused minutes.",
+        "estimate": "2 minutes",
+        "encouragement": "You can stop after two minutes and still count it as a win.",
+    },
+)
+
 
 def load_secret(name: str) -> str | None:
     """Read a secret without exposing it in the interface or source code."""
@@ -69,10 +170,35 @@ def parse_action(raw_text: str) -> dict[str, str]:
     }
 
 
+def demo_plan_for(goal: str) -> tuple[dict[str, str], ...]:
+    normalized_goal = goal.casefold()
+    for keywords, plan in DEMO_PLANS:
+        if any(keyword in normalized_goal for keyword in keywords):
+            return plan
+    return DEFAULT_DEMO_PLAN
+
+
+def generate_demo_action(goal: str, feedback: str, previous_action: str = "") -> dict[str, str]:
+    plan = demo_plan_for(goal)
+    if "stuck" in feedback.casefold():
+        return {
+            "action": "Touch or open the first thing you need for this step.",
+            "estimate": "10 seconds",
+            "encouragement": "Making contact with the task is enough right now.",
+        }
+
+    if previous_action:
+        for index, action in enumerate(plan):
+            if action["action"] == previous_action:
+                return dict(plan[min(index + 1, len(plan) - 1)])
+
+    return dict(plan[0])
+
+
 def generate_action(goal: str, feedback: str, previous_action: str = "") -> dict[str, str]:
     api_key = load_secret("OPENAI_API_KEY")
     if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is not configured.")
+        return generate_demo_action(goal, feedback, previous_action)
 
     model = load_secret("OPENAI_MODEL") or DEFAULT_MODEL
     client = OpenAI(api_key=api_key)
@@ -162,8 +288,6 @@ if not st.session_state.get("started"):
     if submitted:
         if not goal.strip():
             st.warning("Tell Get up! what you need to accomplish first.")
-        elif not load_secret("OPENAI_API_KEY"):
-            st.error("This demo needs an OpenAI API key configured in Streamlit Secrets.")
         else:
             try:
                 with st.spinner("Finding the smallest meaningful step…"):
@@ -239,5 +363,8 @@ else:
 
     with st.expander("My original goal"):
         st.write(st.session_state.goal)
+
+if not load_secret("OPENAI_API_KEY"):
+    st.caption("Demo mode · Free local guidance is active. Add an OpenAI API key for AI-personalized steps.")
 
 st.caption("Get up! is a productivity aid, not medical or emergency support.")
